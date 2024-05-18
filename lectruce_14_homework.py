@@ -76,6 +76,9 @@ class Account:
     def get_balance(self):
         return self.balance
     
+    def get_account_number(self):
+        return self.account_number
+    
     def __str__(self):
         return f'Account number: {self.account_number}, balance: ${self.balance:.2f}'
 
@@ -92,40 +95,32 @@ class CurrentAccount(Account):
         super().__init__(balance, account_number)
         self.overdraft_limit = overdraft_limit
 
-    def withdraw(self, amount):
-        if amount > 0:
-            if self.balance - amount < -self.overdraft_limit:
-                print(f'Withdrawal denied. Account {self.account_number} would exceed its overdraft limit: {self.overdraft_limit}.')
-            else:
-                self.balance -= amount
-        else:
-            raise ValueError('Amount must be positive')
-
     def check_overdraft(self):
         if self.balance < 0:
-            print(f'Account {self.account_number} is currently in overdraft.')
+            print(f'Account {self.account_number} is in overdraft!')
 
 class Bank:
     def __init__(self):
-        self.accounts = {}
+        self.accounts = []
 
-    def open_account(self, balance, account_number, account_type, **kwargs):
+    def open_account(self, account, account_type, **kwargs):
         if account_type == 'savings':
-            new_account = SavingsAccount(balance, account_number, **kwargs)
+            new_account = SavingsAccount(account.balance, account.account_number, **kwargs)
         elif account_type == 'current':
-            new_account = CurrentAccount(balance, account_number, **kwargs)
-        self.accounts[account_number] = new_account
+            new_account = CurrentAccount(account.balance, account.account_number, **kwargs)
+        else:
+            new_account = account
+        self.accounts.append(new_account)
 
     def close_account(self, account_number):
-        if account_number in self.accounts:
-            del self.accounts[account_number]
+        self.accounts = [i for i in self.accounts if i.get_account_number() != account_number]
 
     def pay_dividend(self, amount):
-        for account in self.accounts.values():
+        for account in self.accounts:
             account.deposit(amount)
 
     def update_accounts(self):
-        for account in self.accounts.values():
+        for account in self.accounts:
             if isinstance(account, SavingsAccount):
                 account.add_interest()
             elif isinstance(account, CurrentAccount):
@@ -133,20 +128,25 @@ class Bank:
 
 # Test example
 bank = Bank()
-bank.open_account(0, 1001, 'savings', interest_rate=0.05)
-bank.open_account(0, 1002, 'current', overdraft_limit=100)
+account1 = Account(0, 1001)
+account2 = Account(0, 1002)
+bank.open_account(account1, 'savings', interest_rate=0.05)
+bank.open_account(account2, 'current', overdraft_limit=100)
 
 # Operations and updates
-bank.accounts[1001].deposit(1000)  
-bank.accounts[1002].deposit(100)   
-bank.accounts[1002].withdraw(350) 
+bank.accounts[0].deposit(1000)  # Deposit into savings
+bank.accounts[1].deposit(100)   # Deposit into current
+bank.accounts[1].withdraw(150)  # Overdraft happens here
 
 # Bank updates
 bank.update_accounts()
 
 # Display accounts
-for e in bank.accounts.values():
+for e in bank.accounts:
     print(e)
 
 # Close an account
 bank.close_account(1002)
+
+
+
